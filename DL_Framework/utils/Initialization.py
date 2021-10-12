@@ -1,6 +1,7 @@
 import warnings
 import configparser
 
+
 warnings.filterwarnings('ignore')
 
 
@@ -25,3 +26,4 @@ def process_config(config_file):
             for option in config.options(section):
                 params[option] = eval(config.get(section, option))
     return params
+

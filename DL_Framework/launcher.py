@@ -2,8 +2,11 @@ import warnings
 import shutil
 from dataTrans import *
 from model.model import *
+from utils.visual import *
 import os
 import logging
+import math
+import sys
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 warnings.filterwarnings('ignore')
@@ -12,8 +15,8 @@ warnings.filterwarnings('ignore')
 class Launcher():
     def __init__(self, params={}):
         self.params = params
-        self.training_iters = self.params['trainset_num'] // self.params['batch_size']
-        self.val_iters = self.params['valset_num'] // self.params['batch_size']
+        self.training_iters = math.ceil(self.params['trainset_num'] // self.params['batch_size'])
+        self.val_iters = math.ceil(self.params['valset_num'] // self.params['batch_size'])
         self.task = self.params['task']
         self.dimension = self.params['dimension']
         self.train_tfrecord = self.params['train_tfrecord_dir']
@@ -109,8 +112,10 @@ class Launcher():
                 val_img_tf = tf.reshape(train_img_tf, (-1, img_size[0], img_size[1], img_channels))
                 val_label_tf = tf.reshape(train_label_tf, (-1, label_size[0], label_size[1], n_class))
 
-            self.net = Segmentation_Model(train_img_tf, train_label_tf, n_class, img_channels, "unet_2d", "dice_loss", True)
-            self.vnet = Segmentation_Model(train_img_tf, train_label_tf, n_class, img_channels, "unet_2d", "dice_loss", True)
+            self.net = Segmentation_Model(train_img_tf, train_label_tf, n_class, img_channels, "unet_2d", "dice_loss", 'Dice',
+                                          True)
+            self.vnet = Segmentation_Model(train_img_tf, train_label_tf, n_class, img_channels, "unet_2d", "dice_loss", 'Dice',
+                                           True)
 
         init = self.initialize()
         save_path = os.path.join(self.saver_directory, "model.ckpt")
@@ -129,40 +134,37 @@ class Launcher():
             logging.info("Start Optimization")
             for epoch in range(self.epochs):
                 sess.run(train_iterator.initializer, feed_dict={train_tfrecord_path: self.train_tfrecord})
-                total_train_loss, global_cnt = 0, 0
+                total_train_loss, train_iters_num = 0, 0
                 while True:
                     try:
                         try:
-                            global_cnt += 1
+                            train_iters_num += 1
                             _, cur_train_loss, lr = sess.run([self.optimizer, self.net.cost, self.learning_rate_node])
                             total_train_loss += cur_train_loss
+                            vis_train_log(train_iters_num, epochs, epoch, batch_size, self.train_num, 'dice_loss',
+                                          total_train_loss)
                         except tf.errors.DataLossError as e:
                             logging.info('******DataLoss******')
                     except tf.errors.OutOfRangeError as e:
-                        print('End of epoch_%03d' % epoch)
+                        sys.stdout.write('\n')
                         break
                 avg_train_loss = total_train_loss / self.training_iters
                 save_path = self.net.save(sess, os.path.join(self.saver_directory,
                                                              "epoch_%03d_%.04f.model.ckpt" % (epoch, avg_train_loss)))
-                self.output_epoch_stats(epoch, avg_train_loss, lr)
-
                 if epoch % 5 == 0:
                     sess.run(val_iterator.initializer, feed_dict={val_tfrecord_path: self.val_tfrecord})
-                    total_val_loss = 0
+                    total_val_score, val_iters_num = 0, 0
                     while True:
                         try:
                             try:
-                                cur_val_loss = sess.run(self.vnet.cost)
-                                total_val_loss += cur_val_loss
+                                val_iters_num += 1
+                                cur_val_score = sess.run(self.vnet.score)
+                                total_val_score += cur_val_score
+                                vis_val_log(val_iters_num, epoch, batch_size, self.val_num, 'Dice',
+                                            total_val_score)
                             except tf.errors.DataLossError as e:
                                 logging.info('******DataLoss******')
                         except tf.errors.OutOfRangeError as e:
-                            break
-                    avg_val_loss = total_val_loss / self.val_iters
-                    print('Epoch: ', epoch, ' Validation_loss: ', avg_val_loss)
+                            sys.stdout.write('\n')
             print("Optimization Finished!")
             return save_path
-
-    def output_epoch_stats(self, epoch, avg_loss, lr):
-        print(
-            "Epoch: {:}, Average_loss: {:.4f}, Learning_rate: {:.4f}".format(epoch, avg_loss, lr))
