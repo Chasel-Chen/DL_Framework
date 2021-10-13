@@ -3,12 +3,13 @@ from model.loss import *
 
 
 class Segmentation_Model:
-    def __init__(self, img_tf, label_tf, num_class, channels, net_name, loss_function='dice_loss', score_index='Dice', is_training=True):
+    def __init__(self, img_tf, label_tf, num_class, channels, net_name, basic_layers_name='conv' ,loss_function='dice_loss', score_index='Dice', is_training=True):
         self.x = img_tf
         self.y = tf.cast(label_tf, tf.float32)
         self.num_class = num_class
         self.channels = channels
         self.net_name = net_name
+        self.basic_layers_name = basic_layers_name
         self.loss_function = loss_function
         self.score_index = score_index
         self.is_training = is_training
@@ -16,7 +17,8 @@ class Segmentation_Model:
         self.score = self.get_score()
 
     def inference(self):
-        self.pred = unet_2d(self.x, 16, 5, self.is_training)
+        if self.net_name == "unet_2d":
+            self.pred = unet_2d(self.x, 16, self.num_class, self.is_training, self.basic_layers_name)
         return self.pred
 
     def get_loss(self):

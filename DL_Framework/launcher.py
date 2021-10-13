@@ -112,9 +112,9 @@ class Launcher():
                 val_img_tf = tf.reshape(train_img_tf, (-1, img_size[0], img_size[1], img_channels))
                 val_label_tf = tf.reshape(train_label_tf, (-1, label_size[0], label_size[1], n_class))
 
-            self.net = Segmentation_Model(train_img_tf, train_label_tf, n_class, img_channels, "unet_2d", "dice_loss", 'Dice',
+            self.net = Segmentation_Model(train_img_tf, train_label_tf, n_class, img_channels, "unet_2d", "conv", "dice_loss", 'Dice',
                                           True)
-            self.vnet = Segmentation_Model(train_img_tf, train_label_tf, n_class, img_channels, "unet_2d", "dice_loss", 'Dice',
+            self.vnet = Segmentation_Model(val_img_tf, val_label_tf, n_class, img_channels, "unet_2d", "conv", "dice_loss", 'Dice',
                                            True)
 
         init = self.initialize()
