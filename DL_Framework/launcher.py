@@ -90,6 +90,8 @@ class Launcher():
         modeltoload = self.params.pop('modeltoload', '')
         n_class = self.params.pop('n_class')
         img_channels = self.params.pop('channels')
+        net_name = self.params.pop('net_name')
+        basic_layers_name = self.params.pop('basic_layers_name', 'conv')
 
         train_tfrecord_path = tf.compat.v1.placeholder(tf.string)
         val_tfrecord_path = tf.compat.v1.placeholder(tf.string)
@@ -101,21 +103,34 @@ class Launcher():
         val_img_tf, val_label_tf = val_iterator.get_next()
 
         if self.task == 'Segmentation':
-            if self.dimension == 3:
-                train_img_tf = tf.reshape(train_img_tf, (-1, img_size[0], img_size[1], img_size[2], img_channels))
-                train_label_tf = tf.reshape(train_label_tf, (-1, label_size[0], label_size[1], label_size[2], n_class))
-                val_img_tf = tf.reshape(val_img_tf, (-1, img_size[0], img_size[1], img_size[2], img_channels))
-                val_label_tf = tf.reshape(val_label_tf, (-1, label_size[0], label_size[1], label_size[2], n_class))
-            elif self.dimension == 2:
-                train_img_tf = tf.reshape(train_img_tf, (-1, img_size[0], img_size[1], img_channels))
-                train_label_tf = tf.reshape(train_label_tf, (-1, label_size[0], label_size[1], n_class))
-                val_img_tf = tf.reshape(train_img_tf, (-1, img_size[0], img_size[1], img_channels))
-                val_label_tf = tf.reshape(train_label_tf, (-1, label_size[0], label_size[1], n_class))
+            loss_function = self.params.pop('loss_function', 'dice_loss')
+            score_index = self.params.pop('score_index', 'Dice')
+            batch_img_shape = [-1] + img_size + [img_channels]
+            batch_label_shape = [-1] + img_size + [n_class]
+            train_img_tf = tf.reshape(train_img_tf, batch_img_shape)
+            train_label_tf = tf.reshape(train_label_tf, batch_label_shape)
+            val_img_tf = tf.reshape(train_img_tf, batch_img_shape)
+            val_label_tf = tf.reshape(train_label_tf, batch_label_shape)
 
-            self.net = Segmentation_Model(train_img_tf, train_label_tf, n_class, img_channels, "unet_2d", "conv", "dice_loss", 'Dice',
+            self.net = Segmentation_Model(train_img_tf, train_label_tf, n_class, img_channels, net_name, basic_layers_name, loss_function, score_index,
                                           True)
-            self.vnet = Segmentation_Model(val_img_tf, val_label_tf, n_class, img_channels, "unet_2d", "conv", "dice_loss", 'Dice',
+            self.vnet = Segmentation_Model(val_img_tf, val_label_tf, n_class, img_channels, net_name, basic_layers_name, loss_function, score_index,
                                            True)
+        elif self.task == 'Keypoints':
+            loss_function = self.params.pop('loss_function', 'MSE')
+            score_index = self.params.pop('score_index', 'MSE')
+            batch_img_shape = [-1] + img_size + [img_channels]
+            batch_label_shape = [-1] + img_size + [n_class]
+            train_img_tf = tf.reshape(train_img_tf, batch_img_shape)
+            train_label_tf = tf.reshape(train_label_tf, batch_label_shape)
+            val_img_tf = tf.reshape(train_img_tf, batch_img_shape)
+            val_label_tf = tf.reshape(train_label_tf, batch_label_shape)
+
+            self.net = Keypoints_Model(train_img_tf, train_label_tf, n_class, img_channels, net_name, basic_layers_name, loss_function, score_index,
+                                          True)
+            self.vnet = Keypoints_Model(val_img_tf, val_label_tf, n_class, img_channels, net_name, basic_layers_name, loss_function, score_index,
+                                           True)
+
 
         init = self.initialize()
         save_path = os.path.join(self.saver_directory, "model.ckpt")
