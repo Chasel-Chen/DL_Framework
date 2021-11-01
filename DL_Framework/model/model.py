@@ -3,7 +3,7 @@ from model.loss import *
 
 
 class Segmentation_Model:
-    def __init__(self, img_tf, label_tf, num_class, channels, net_name, basic_layers_name='conv' ,loss_function='dice_loss', score_index='Dice', is_training=True):
+    def __init__(self, img_tf, label_tf, num_class, channels, net_name, basic_layers_name='conv', loss_function='dice_loss', weighted_loss=[1.0, 1.0], score_index='Dice', is_training=True):
         self.x = img_tf
         self.y = tf.cast(label_tf, tf.float32)
         self.num_class = num_class
@@ -15,6 +15,7 @@ class Segmentation_Model:
         self.is_training = is_training
         self.cost = self.get_loss()
         self.score = self.get_score()
+        self.weighted_loss = weighted_loss
 
     def inference(self):
         if self.net_name == "unet_2d":
@@ -26,7 +27,7 @@ class Segmentation_Model:
         if self.loss_function == 'dice_loss':
             loss = dice_loss(self.pred, self.y)
         elif self.loss_function == 'explog_loss':
-            loss = explog_loss(self.pred, self.y)
+            loss = explog_loss(self.pred, self.y, self.num_class, self.weighted_loss)
         return loss
 
     def get_score(self):

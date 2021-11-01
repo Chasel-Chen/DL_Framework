@@ -23,6 +23,7 @@ class Launcher():
         self.train_tfrecord = self.params['train_tfrecord_dir']
         self.val_tfrecord = self.params['val_tfrecord_dir']
 
+
     def get_optimizer(self, global_step):
         optimizer_name = self.params.pop('optimizer', 'adam')
         assert optimizer_name in ['adam', 'Momentum', 'RMSProp'], 'Unknown Optimizer'
@@ -93,6 +94,7 @@ class Launcher():
         img_channels = self.params.pop('channels')
         net_name = self.params.pop('net_name')
         basic_layers_name = self.params.pop('basic_layers_name', 'conv')
+        weighted_loss = self.params['weighted_loss']
         config = tf.compat.v1.ConfigProto()
 
         train_tfrecord_path = tf.compat.v1.placeholder(tf.string)
@@ -114,9 +116,9 @@ class Launcher():
             val_img_tf = tf.reshape(train_img_tf, batch_img_shape)
             val_label_tf = tf.reshape(train_label_tf, batch_label_shape)
 
-            self.net = Segmentation_Model(train_img_tf, train_label_tf, n_class, img_channels, net_name, basic_layers_name, loss_function, score_index,
+            self.net = Segmentation_Model(train_img_tf, train_label_tf, n_class, img_channels, net_name, basic_layers_name, loss_function, weighted_loss, score_index,
                                           True)
-            self.vnet = Segmentation_Model(val_img_tf, val_label_tf, n_class, img_channels, net_name, basic_layers_name, loss_function, score_index,
+            self.vnet = Segmentation_Model(val_img_tf, val_label_tf, n_class, img_channels, net_name, basic_layers_name, loss_function, weighted_loss, score_index,
                                            False)
         init = self.initialize()
         save_path = os.path.join(self.saver_directory, "model.ckpt")
