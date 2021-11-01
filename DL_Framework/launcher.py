@@ -8,13 +8,14 @@ import logging
 import math
 import sys
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 warnings.filterwarnings('ignore')
 
 
 class Launcher():
     def __init__(self, params={}):
         self.params = params
+        self.train_num = self.params['trainset_num']
+        self.val_num = self.params['valset_num']
         self.training_iters = math.ceil(self.params['trainset_num'] // self.params['batch_size'])
         self.val_iters = math.ceil(self.params['valset_num'] // self.params['batch_size'])
         self.task = self.params['task']
@@ -92,6 +93,7 @@ class Launcher():
         img_channels = self.params.pop('channels')
         net_name = self.params.pop('net_name')
         basic_layers_name = self.params.pop('basic_layers_name', 'conv')
+        config = tf.compat.v1.ConfigProto()
 
         train_tfrecord_path = tf.compat.v1.placeholder(tf.string)
         val_tfrecord_path = tf.compat.v1.placeholder(tf.string)
@@ -115,30 +117,11 @@ class Launcher():
             self.net = Segmentation_Model(train_img_tf, train_label_tf, n_class, img_channels, net_name, basic_layers_name, loss_function, score_index,
                                           True)
             self.vnet = Segmentation_Model(val_img_tf, val_label_tf, n_class, img_channels, net_name, basic_layers_name, loss_function, score_index,
-                                           True)
-        elif self.task == 'Keypoints':
-            loss_function = self.params.pop('loss_function', 'MSE')
-            score_index = self.params.pop('score_index', 'MSE')
-            batch_img_shape = [-1] + img_size + [img_channels]
-            batch_label_shape = [-1] + img_size + [n_class]
-            train_img_tf = tf.reshape(train_img_tf, batch_img_shape)
-            train_label_tf = tf.reshape(train_label_tf, batch_label_shape)
-            val_img_tf = tf.reshape(train_img_tf, batch_img_shape)
-            val_label_tf = tf.reshape(train_label_tf, batch_label_shape)
-
-            self.net = Keypoints_Model(train_img_tf, train_label_tf, n_class, img_channels, net_name, basic_layers_name, loss_function, score_index,
-                                          True)
-            self.vnet = Keypoints_Model(val_img_tf, val_label_tf, n_class, img_channels, net_name, basic_layers_name, loss_function, score_index,
-                                           True)
-
-
+                                           False)
         init = self.initialize()
         save_path = os.path.join(self.saver_directory, "model.ckpt")
-
         if epochs == 0:
             return save_path
-
-        config = tf.compat.v1.ConfigProto()
         config.gpu_options.allow_growth = True
 
         with tf.compat.v1.Session(config=config) as sess:

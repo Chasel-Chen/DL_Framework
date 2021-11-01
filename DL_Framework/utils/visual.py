@@ -1,5 +1,6 @@
 import numpy as np
 import sys
+import tensorflow as tf
 
 
 def vis_train_log(iters, total_epoch, cur_epoch, batch_size, train_num, loss_function, total_loss):
@@ -26,3 +27,15 @@ def vis_val_log(iters, cur_epoch, batch_size, val_num, val_score_name, total_sco
             val_num) + ' ' + val_score_name + ':' + ' {:.4f}'.format(total_score) + ' Avg_score: {:.4f}'.format(
             total_score / (avg_score)))
     sys.stdout.flush()
+
+
+def count_trainable_vars():
+    total_parameters = 0
+    for variable in tf.trainable_variables():
+        variable_parameters = 1
+        print(variable)
+        for dim in variable.get_shape():
+            variable_parameters *= dim.value
+        print(variable_parameters)
+        total_parameters += variable_parameters
+    print("Total number of trainable parameters------------------------------------------------: %d" % total_parameters)
