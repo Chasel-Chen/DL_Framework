@@ -22,6 +22,7 @@ class Launcher():
         self.dimension = self.params['dimension']
         self.train_tfrecord = self.params['train_tfrecord_dir']
         self.val_tfrecord = self.params['val_tfrecord_dir']
+        self.is_aug = self.params['is_aug']
 
 
     def get_optimizer(self, global_step):
@@ -100,21 +101,15 @@ class Launcher():
         train_tfrecord_path = tf.compat.v1.placeholder(tf.string)
         val_tfrecord_path = tf.compat.v1.placeholder(tf.string)
 
-        train_iterator = make_batch_iterator(train_tfrecord_path, img_size, shuffle=True, batch_size=batch_size)
+        train_iterator = make_batch_iterator(train_tfrecord_path, img_size, shuffle=True, batch_size=batch_size, num_class=n_class, aug=True)
         train_img_tf, train_label_tf = train_iterator.get_next()
 
-        val_iterator = make_batch_iterator(val_tfrecord_path, img_size, shuffle=False, batch_size=batch_size)
+        val_iterator = make_batch_iterator(val_tfrecord_path, img_size, shuffle=False, batch_size=batch_size, num_class=n_class, aug=False)
         val_img_tf, val_label_tf = val_iterator.get_next()
 
         if self.task == 'Segmentation':
             loss_function = self.params.pop('loss_function', 'dice_loss')
             score_index = self.params.pop('score_index', 'Dice')
-            batch_img_shape = [-1] + img_size + [img_channels]
-            batch_label_shape = [-1] + img_size + [n_class]
-            train_img_tf = tf.reshape(train_img_tf, batch_img_shape)
-            train_label_tf = tf.reshape(train_label_tf, batch_label_shape)
-            val_img_tf = tf.reshape(train_img_tf, batch_img_shape)
-            val_label_tf = tf.reshape(train_label_tf, batch_label_shape)
 
             self.net = Segmentation_Model(train_img_tf, train_label_tf, n_class, img_channels, net_name, basic_layers_name, loss_function, weighted_loss, score_index,
                                           True)
