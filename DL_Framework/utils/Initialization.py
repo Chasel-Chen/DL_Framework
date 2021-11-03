@@ -1,6 +1,6 @@
 import warnings
 import configparser
-
+import tensorflow as tf
 
 warnings.filterwarnings('ignore')
 
@@ -27,3 +27,9 @@ def process_config(config_file):
                 params[option] = eval(config.get(section, option))
     return params
 
+
+def get_tfrecord_sample(file_name):
+    sample_nums = 0
+    for _ in tf.python_io.tf_record_iterator(file_name):
+        sample_nums += 1
+    return sample_nums

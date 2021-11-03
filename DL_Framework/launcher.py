@@ -3,6 +3,7 @@ import shutil
 from dataTrans import *
 from model.model import *
 from utils.visual import *
+from utils.Initialization import *
 import os
 import logging
 import math
@@ -14,16 +15,15 @@ warnings.filterwarnings('ignore')
 class Launcher():
     def __init__(self, params={}):
         self.params = params
-        self.train_num = self.params['trainset_num']
-        self.val_num = self.params['valset_num']
+        self.train_tfrecord = self.params['train_tfrecord_dir']
+        self.val_tfrecord = self.params['val_tfrecord_dir']
+        self.train_num = get_tfrecord_sample(self.train_tfrecord)
+        self.val_num = get_tfrecord_sample(self.val_tfrecord)
         self.training_iters = math.ceil(self.params['trainset_num'] // self.params['batch_size'])
         self.val_iters = math.ceil(self.params['valset_num'] // self.params['batch_size'])
         self.task = self.params['task']
         self.dimension = self.params['dimension']
-        self.train_tfrecord = self.params['train_tfrecord_dir']
-        self.val_tfrecord = self.params['val_tfrecord_dir']
         self.is_aug = self.params['is_aug']
-
 
     def get_optimizer(self, global_step):
         optimizer_name = self.params.pop('optimizer', 'adam')
