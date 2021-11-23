@@ -17,10 +17,6 @@ class Launcher():
         self.params = params
         self.train_tfrecord = self.params['train_tfrecord_dir']
         self.val_tfrecord = self.params['val_tfrecord_dir']
-        self.train_num = get_tfrecord_sample(self.train_tfrecord)
-        self.val_num = get_tfrecord_sample(self.val_tfrecord)
-        self.training_iters = math.ceil(self.params['trainset_num'] // self.params['batch_size'])
-        self.val_iters = math.ceil(self.params['valset_num'] // self.params['batch_size'])
         self.task = self.params['task']
         self.dimension = self.params['dimension']
         self.is_aug = self.params['is_aug']
@@ -87,7 +83,6 @@ class Launcher():
 
     def train(self):
         img_size = self.params.pop('img_size')
-        label_size = self.params.pop('label_size')
         batch_size = self.params.pop('batch_size', 1)
         epochs = self.params.pop('n_epoch', 50)
         modeltoload = self.params.pop('modeltoload', '')
@@ -96,24 +91,32 @@ class Launcher():
         net_name = self.params.pop('net_name')
         basic_layers_name = self.params.pop('basic_layers_name', 'conv')
         weighted_loss = self.params['weighted_loss']
+        train_num = get_tfrecord_sample(self.train_tfrecord)
+        val_num = get_tfrecord_sample(self.val_tfrecord)
+        train_iters = math.ceil(train_num // batch_size)
+        val_iters = math.ceil(val_num // batch_size)
         config = tf.compat.v1.ConfigProto()
 
         train_tfrecord_path = tf.compat.v1.placeholder(tf.string)
         val_tfrecord_path = tf.compat.v1.placeholder(tf.string)
 
-        train_iterator = make_batch_iterator(train_tfrecord_path, img_size, shuffle=True, batch_size=batch_size, num_class=n_class, aug=True)
+        train_iterator = make_batch_iterator(train_tfrecord_path, img_size, shuffle=True, batch_size=batch_size,
+                                             num_class=n_class, aug=True)
         train_img_tf, train_label_tf = train_iterator.get_next()
 
-        val_iterator = make_batch_iterator(val_tfrecord_path, img_size, shuffle=False, batch_size=batch_size, num_class=n_class, aug=False)
+        val_iterator = make_batch_iterator(val_tfrecord_path, img_size, shuffle=False, batch_size=batch_size,
+                                           num_class=n_class, aug=False)
         val_img_tf, val_label_tf = val_iterator.get_next()
 
         if self.task == 'Segmentation':
             loss_function = self.params.pop('loss_function', 'dice_loss')
             score_index = self.params.pop('score_index', 'Dice')
 
-            self.net = Segmentation_Model(train_img_tf, train_label_tf, n_class, img_channels, net_name, basic_layers_name, loss_function, weighted_loss, score_index,
+            self.net = Segmentation_Model(train_img_tf, train_label_tf, n_class, img_channels, net_name,
+                                          basic_layers_name, loss_function, weighted_loss, score_index,
                                           True)
-            self.vnet = Segmentation_Model(val_img_tf, val_label_tf, n_class, img_channels, net_name, basic_layers_name, loss_function, weighted_loss, score_index,
+            self.vnet = Segmentation_Model(val_img_tf, val_label_tf, n_class, img_channels, net_name, basic_layers_name,
+                                           loss_function, weighted_loss, score_index,
                                            False)
         init = self.initialize()
         save_path = os.path.join(self.saver_directory, "model.ckpt")
@@ -136,14 +139,14 @@ class Launcher():
                             train_iters_num += 1
                             _, cur_train_loss, lr = sess.run([self.optimizer, self.net.cost, self.learning_rate_node])
                             total_train_loss += cur_train_loss
-                            vis_train_log(train_iters_num, epochs, epoch, batch_size, self.train_num, 'dice_loss',
+                            vis_train_log(train_iters_num, epochs, epoch, batch_size, train_num, 'dice_loss',
                                           total_train_loss)
                         except tf.errors.DataLossError as e:
                             logging.info('******DataLoss******')
                     except tf.errors.OutOfRangeError as e:
                         sys.stdout.write('\n')
                         break
-                avg_train_loss = total_train_loss / self.training_iters
+                avg_train_loss = total_train_loss / train_iters
                 save_path = self.net.save(sess, os.path.join(self.saver_directory,
                                                              "epoch_%03d_%.04f.model.ckpt" % (epoch, avg_train_loss)))
                 if epoch % 5 == 0:
@@ -155,11 +158,60 @@ class Launcher():
                                 val_iters_num += 1
                                 cur_val_score = sess.run(self.vnet.score)
                                 total_val_score += cur_val_score
-                                vis_val_log(val_iters_num, epoch, batch_size, self.val_num, 'Dice',
+                                vis_val_log(val_iters_num, epoch, batch_size, val_num, 'Dice',
                                             total_val_score)
                             except tf.errors.DataLossError as e:
                                 logging.info('******DataLoss******')
                         except tf.errors.OutOfRangeError as e:
                             sys.stdout.write('\n')
+            print("Optimization Finished!")
+            return save_path
+
+    def test_batch(self):
+        img_size = self.params.pop('img_size')
+        batch_size = self.params.pop('batch_size', 1)
+        modeltoload = self.params.pop('modeltoload', '')
+        n_class = self.params.pop('n_class')
+        img_channels = self.params.pop('channels')
+        net_name = self.params.pop('net_name')
+        basic_layers_name = self.params.pop('basic_layers_name', 'conv')
+        test_num = get_tfrecord_sample(self.test_tfrecord)
+        config = tf.compat.v1.ConfigProto()
+
+        test_tfrecord_path = tf.compat.v1.placeholder(tf.string)
+
+        test_iterator = make_batch_iterator(test_tfrecord_path, img_size, shuffle=False, batch_size=batch_size,
+                                            num_class=n_class, aug=False)
+        test_img_tf, test_label_tf = test_iterator.get_next()
+
+        if self.task == 'Segmentation':
+            loss_function = self.params.pop('loss_function', 'dice_loss')
+            score_index = self.params.pop('score_index', 'Dice')
+
+            self.vnet = Segmentation_Model(img_tf=test_img_tf, label_tf=test_label_tf, num_class=n_class,
+                                           channels=img_channels, net_name=net_name,
+                                           basic_layers_name=basic_layers_name, loss_function=loss_function,
+                                           score_index=score_index, is_training=False)
+        init = self.initialize()
+
+        config.gpu_options.allow_growth = True
+
+        with tf.compat.v1.Session(config=config) as sess:
+            sess.run(init)
+            self.vnet.restore(sess, modeltoload)
+            logging.info("Start Optimization")
+            sess.run(test_iterator.initializer, feed_dict={test_tfrecord_path: self.val_tfrecord})
+            total_test_score, test_iters_num = 0, 0
+            while True:
+                try:
+                    try:
+                        test_iters_num += 1
+                        cur_test_score = sess.run(self.vnet.score)
+                        total_test_score += cur_test_score
+                        vis_test_log(test_iters_num, batch_size, self.test_num, 'Dice', total_test_score)
+                    except tf.errors.DataLossError as e:
+                        logging.info('******DataLoss******')
+                except tf.errors.OutOfRangeError as e:
+                    sys.stdout.write('\n')
             print("Optimization Finished!")
             return save_path

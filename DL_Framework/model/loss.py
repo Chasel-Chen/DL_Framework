@@ -19,7 +19,18 @@ def dice_score(y_pred, gt):
     return dice
 
 
-def explog_loss(y_pred, gt, num_class, weight=[1., 1.]):
+def multi_dice_score(y_pred, gt):
+    g1 = tf.reshape(y_pred, [-1, y_pred.shape[-1]])[..., 1:]
+    p1 = tf.reshape(gt, [-1, y_pred.shape[-1]])[..., 1:]
+    intersection = tf.reduce_sum(g1 * p1, axis=(0, 1, 2))
+    union = tf.reduce_sum(g1, axis=(0, 1, 2)) + tf.reduce_sum(p1, axis=(0, 1, 2))
+    dice = (2 * intersection + 1.) / (union + 1.)
+    return dice
+
+
+def explog_loss(y_pred, gt, num_class, weight=None):
+    if not weight:
+        weight = [1.] * num_class
     if len(weight) != num_class:
         raise ValueError('The length of weight should be same as num_class')
     smooth = 1

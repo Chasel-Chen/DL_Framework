@@ -29,6 +29,9 @@ def data_norm(img, methods='z_score', axes=[0, 1]):
         max_v = tf.reduce_max(img)
         min_v = tf.reduce_min(img)
         img = (img - min_v) / (max_v - min_v)
+    elif methods == 'clip':
+        img = tf.clip_by_value(img, 500, 1400)
+        img = (img - 500.) / 900.
     else:
         raise NameError('Undefined data_norm_method!')
     return img
@@ -73,13 +76,13 @@ def augment(img, mask, aug=True, rr=(-30, 30), ed=(3, 15), tr=(-20, 20), flip=0.
     return img, mask
 
 
-def make_batch_iterator(tfr, image_size, shuffle=True, batch_size=1, num_class=2, aug=True):
+def make_batch_iterator(tfr, image_size, shuffle=True, batch_size=1, num_class=2, if_aug=True):
     dataset = tf.data.TFRecordDataset(tfr)
     if shuffle:
         dataset = dataset.shuffle(10)
     dataset = dataset.map(parse_function)
     dataset = dataset.map(lambda img, mask: preprocess(img, mask, image_size))
-    dataset = dataset.map(lambda img, mask: augment(img, mask, aug, num_class=num_class))
+    dataset = dataset.map(lambda img, mask: augment(img, mask, if_aug, num_class=num_class))
     dataset = dataset.batch(batch_size)
     dataset = dataset.prefetch(-1)
     return dataset.make_initializable_iterator()

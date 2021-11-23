@@ -29,6 +29,19 @@ def vis_val_log(iters, cur_epoch, batch_size, val_num, val_score_name, total_sco
     sys.stdout.flush()
 
 
+def vis_test_log(iters, batch_size, test_num, test_score_name, total_score):
+    percent = iters * batch_size / test_num * 100
+    num = np.int(20 * percent / 100)
+    avg_score = total_score / iters
+    sys.stdout.write(
+        '\r Test Starting: ' + '{0}>'.format("=" * num) + "{0}>".format(
+            " " * (20 - num)) + '||' + str(
+            percent)[:4] + '%' + ' [{0}:'.format(iters * batch_size) + '{0}]'.format(
+            test_num) + ' ' + test_score_name + ':' + ' {:.4f}'.format(total_score) + ' Avg_score: {:.4f}'.format(
+            total_score / (avg_score)))
+    sys.stdout.flush()
+
+
 def count_trainable_vars():
     total_parameters = 0
     for variable in tf.trainable_variables():
