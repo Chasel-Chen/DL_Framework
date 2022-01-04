@@ -14,17 +14,12 @@ class Segmentation_Model:
         self.loss_function = loss_function
         self.score_index = score_index
         self.is_training = is_training
+        if self.net_name == 'unet_2d':
+            self.pred = unet_2d(self.x, 16, self.num_class, self.is_training, self.basic_layers_name)
         self.cost = self.get_loss()
         self.score = self.get_score()
 
-
-    def inference(self):
-        if self.net_name == "unet_2d":
-            self.pred = unet_2d(self.x, 16, self.num_class, self.is_training, self.basic_layers_name)
-        return self.pred
-
     def get_loss(self):
-        self.inference()
         if self.loss_function == 'dice_loss':
             loss = dice_loss(self.pred, self.y)
         elif self.loss_function == 'explog_loss':
@@ -32,7 +27,6 @@ class Segmentation_Model:
         return loss
 
     def get_score(self):
-        self.inference()
         if self.score_index == 'Dice':
             score = dice_score(self.pred, self.y)
         elif self.score_index == 'Multi_Dice':
