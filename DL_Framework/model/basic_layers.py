@@ -1,4 +1,5 @@
 import tensorflow as tf
+import torch
 
 
 def normalize_2d(x, norm='BN'):
@@ -69,6 +70,8 @@ def upsampling_2d(x, up_sampling_method, scale_factor, channels, norm='BN', acti
     elif up_sampling_method == 'interpolation':
         x = tf.image.resize_images(x, [x.shape[1] * scale_factor, x.shape[2] * scale_factor])
         x = tf.layers.conv2d(x, filters=channels, stride=1, kernel_size=3, padding='SAME')
+    elif up_sampling_method == 'pixelshuffle':
+        x = tf.depth_to_space(x, scale_factor)
     else:
         raise NameError('Undefined upsampling method')
     if norm == 'GN':
@@ -141,3 +144,7 @@ def resX_block_2d(x, channels=None, norm='BN', activ_func='ReLu', strides=1, ker
                              kernel_size=kernel_size)
     res = res + short_cut
     return res
+
+
+
+

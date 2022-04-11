@@ -1,5 +1,54 @@
 from model.Seg_model import *
 from model.loss import *
+from model.basic_layers import *
+
+
+class Unet2d:
+    def __init__(self, img_tf, label_tf, num_class, channels, basic_layers_name='conv', loss_function='dice_loss', weighted_loss=None, score_index='Dice', is_traning=True):
+        self.x = img_tf
+        self.y = label_tf
+        self.weighted_loss = weighted_loss
+        self.num_class = num_class
+        self.channels = channels
+        self.basic_layers_name = basic_layers_name
+        self.is_training = is_traning
+        self.pred = self.inference(self.x, self.channels, self.num_class, self.is_training, self.basic_layers_name)
+        self.cost = self.get_loss(loss_function)
+        self.score = self.get_score(score_index)
+
+
+    def down_stage(self,x, basic_layers, channels, name_scope, reuse):
+        with tf.variable_scope(name_scope, reuse=reuse):
+            x = tf.nn.max_pool(x, [1, 2, 2, 1], [1, 2, 2, 1], padding='SAME')
+            x = basic_layers(x, channels)
+            x = basic_layers(x, channels)
+        return x
+
+
+    def up_stage(self, x_l, x_h, basic_layers, channels, drop_rate, name_scope, up_method, reuse):
+        with tf.variable_scope(name_scope, reuse=reuse):
+            x = upsampling_2d(x_l, up_method, 2, channels)
+            x = tf.concat([x, x_h], axis=-1)
+            x = drop_out(x. drop_rate)
+            x = basic_layers(x, channels)
+            x = basic_layers(x, channels)
+            return x
+
+    def inference(self, x, channels=32, n_class=2, is_training=True, basic_layers_name='conv', reuse=tf.AUTO_REUSE):
+        drop_rate = 0.2 if is_training else 0
+        if basic_layers_name == 'conv':
+            basic_layers = conv2d_block
+        elif basic_layers_name == 'res_block':
+            basic_layers = res_block_2d
+        elif basic_layers_name == 'resX_block':
+            basic_layers = resX_block_2d
+        else:
+            raise NameError('Undefined basic layers name !!')
+        with tf.variable_scope('unet_2d', reuse=reuse):
+            D0 = tf.identity(x, name='network_input')
+            with tf.variable_scope('D1', reuse=reuse):
+
+
 
 
 class Segmentation_Model:

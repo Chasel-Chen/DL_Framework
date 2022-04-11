@@ -1,4 +1,5 @@
 from model.basic_layers import *
+from model.seg_basic_layers import *
 
 
 def unet_2d(x, channels=32, n_class=2, is_training=True, basic_layers_name='conv', reuse=tf.AUTO_REUSE, drop_rate=0.2):
@@ -71,3 +72,17 @@ def unet_2d(x, channels=32, n_class=2, is_training=True, basic_layers_name='conv
             OP = tf.nn.softmax(OP, axis=-1)
         OP = tf.identity(OP, name='network_output')
         return OP
+
+
+def bisenet_2d_v1(x, n_class=2, is_training=True, reuse=tf.AUTO_REUSE):
+    s = x.get_shape().as_list()
+    feat_cp8, feat_cp16 = bisenet_context_path(x)
+    feat_sp = bisenet_spatial_path(x)
+    feat_fuse = featurefusionmodule(feat_sp, feat_cp8)
+    feat_out = conv_out(feat_fuse)
+    if is_training:
+        feat_out16 = conv_out16(feat_cp8)
+        feat_out32 = conv_out32(feat_cp16)
+        return feat_out, feat_out16, feat_out32
+    else:
+        return feat_out

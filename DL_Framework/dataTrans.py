@@ -1,4 +1,3 @@
-import numpy as np
 import tensorflow as tf
 import math
 import elasticdeform.tf as etf
@@ -20,8 +19,9 @@ def preprocess(img, mask, image_size):
     return img, mask
 
 
-def data_norm(img, methods='z_score', axes=[0, 1]):
+def data_norm(img, methods='z_score'):
     if methods == 'z_score':
+        axes = list(range(len(img.shape)))
         mean, var = tf.nn.moments(img, axes)
         std = tf.sqrt(var)
         img = (img - mean) / std
