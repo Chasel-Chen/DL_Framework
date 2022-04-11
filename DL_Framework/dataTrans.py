@@ -19,27 +19,24 @@ def preprocess(img, mask, image_size):
     return img, mask
 
 
-def data_norm(img, methods='z_score'):
+def data_norm(img, methods='z_score', min_value=None, max_value=None):
     if methods == 'z_score':
         axes = list(range(len(img.shape)))
         mean, var = tf.nn.moments(img, axes)
-        std = tf.sqrt(var)
+        std = tf.sqrt(var) + 1e-4
         img = (img - mean) / std
     elif methods == "min_max":
-        max_v = tf.reduce_max(img)
-        min_v = tf.reduce_min(img)
+        min_v = tf.reduce_min(img) if min_value is None else min_value
+        max_v = tf.reduce_max(img) if max_value is None else max_value
         img = (img - min_v) / (max_v - min_v)
-    elif methods == 'clip':
-        img = tf.clip_by_value(img, 500, 1400)
-        img = (img - 500.) / 900.
     else:
         raise NameError('Undefined data_norm_method!')
     return img
 
 
-def augment(img, mask, aug=True, rr=(-30, 30), ed=(3, 15), tr=(-20, 20), flip=0.5, num_class=2):
+def augment(img, mask, aug=True, rr=(-30, 30), ed=(3, 15), tr=(-20, 20), flip=0.5, num_class=2, norm_method='z_core'):
     if not aug:
-        img = data_norm(img, 'z_score')
+        img = data_norm(img, norm_method)
         img = tf.expand_dims(data_norm(img), -1)
         mask = tf.one_hot(tf.cast(mask, tf.uint8), num_class, axis=-1, dtype=tf.float32)
         return img, mask
@@ -64,7 +61,7 @@ def augment(img, mask, aug=True, rr=(-30, 30), ed=(3, 15), tr=(-20, 20), flip=0.
     img = tf.contrib.image.translate(img, (tx, ty), 'BILINEAR')
     mask = tf.contrib.image.translate(mask, (tx, ty), 'NEAREST')
 
-    img = data_norm(img, 'z_score')
+    img = data_norm(img, norm_method)
     img = tf.expand_dims(img, -1)
     mask = tf.one_hot(tf.cast(mask, tf.uint8), num_class, axis=-1, dtype=tf.float32)
 
@@ -76,13 +73,13 @@ def augment(img, mask, aug=True, rr=(-30, 30), ed=(3, 15), tr=(-20, 20), flip=0.
     return img, mask
 
 
-def make_batch_iterator(tfr, image_size, shuffle=True, batch_size=1, num_class=2, if_aug=True):
+def make_batch_iterator(tfr, image_size, shuffle=True, batch_size=1, num_class=2, if_aug=True, norm_method='z_score'):
     dataset = tf.data.TFRecordDataset(tfr)
     if shuffle:
         dataset = dataset.shuffle(10)
     dataset = dataset.map(parse_function)
     dataset = dataset.map(lambda img, mask: preprocess(img, mask, image_size))
-    dataset = dataset.map(lambda img, mask: augment(img, mask, if_aug, num_class=num_class))
+    dataset = dataset.map(lambda img, mask: augment(img, mask, if_aug, num_class=num_class, norm_method=norm_method))
     dataset = dataset.batch(batch_size)
     dataset = dataset.prefetch(-1)
     return dataset.make_initializable_iterator()
