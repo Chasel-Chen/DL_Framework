@@ -1,10 +1,10 @@
-from model.Seg_model import *
 from model.loss import *
 from model.basic_layers import *
 
 
 class Unet2d:
-    def __init__(self, img_tf, label_tf, num_class, channels, basic_layers_name='conv', loss_function='dice_loss', weighted_loss=None, score_index='Dice', is_traning=True):
+    def __init__(self, img_tf, label_tf, num_class, channels, basic_layers_name='conv', loss_function='dice_loss',
+                 weighted_loss=None, score_index='Dice', is_traning=True):
         self.x = img_tf
         self.y = label_tf
         self.weighted_loss = weighted_loss
@@ -18,7 +18,7 @@ class Unet2d:
         self.cost = self.get_loss()
         self.score = self.get_score()
 
-    def down_stage(self,x, basic_layers, channels, name_scope, reuse):
+    def down_stage(self, x, basic_layers, channels, name_scope, reuse):
         with tf.variable_scope(name_scope, reuse=reuse):
             x = tf.nn.max_pool(x, [1, 2, 2, 1], [1, 2, 2, 1], padding='SAME')
             x = basic_layers(x, channels)
@@ -58,16 +58,16 @@ class Unet2d:
             U2 = self.up_stage(U3, D2, basic_layers, channels * 2, 'U2', up_method='deconv', reuse=reuse)
             U1 = self.up_stage(U2, D1, basic_layers, channels, 'U1', up_method='deconv', reuse=reuse)
             with tf.variable_scope('Output', reuse=reuse):
-                OP = basic_layers(U1, n_class, kernel_size=[1,1])
-                OP = tf.nn.softmax(OP, axis = -1)
-            OP =tf.identity(OP, name='Network_Output')
+                OP = basic_layers(U1, n_class, kernel_size=[1, 1])
+                OP = tf.nn.softmax(OP, axis=-1)
+            OP = tf.identity(OP, name='Network_Output')
             return OP
 
     def get_loss(self):
         if self.loss_function == 'dice_loss':
             loss = dice_loss(self.pred, self.y)
         elif self.loss_function == 'explog_loss':
-            loss = explog_loss(self.pred. self.y, self.num_class, self.weighted_loss)
+            loss = explog_loss(self.pred.self.y, self.num_class, self.weighted_loss)
         else:
             raise NameError('Undefined loss function')
         return loss

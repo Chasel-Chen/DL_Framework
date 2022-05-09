@@ -112,10 +112,10 @@ class Launcher():
             loss_function = self.params.pop('loss_function', 'dice_loss')
             score_index = self.params.pop('score_index', 'Dice')
 
-            self.net = Segmentation_Model(train_img_tf, train_label_tf, n_class, img_channels, net_name,
+            self.net =Unet2d(train_img_tf, train_label_tf, n_class, img_channels, net_name,
                                           basic_layers_name, loss_function, weighted_loss, score_index,
                                           True)
-            self.vnet = Segmentation_Model(val_img_tf, val_label_tf, n_class, img_channels, net_name, basic_layers_name,
+            self.vnet = Unet2d(val_img_tf, val_label_tf, n_class, img_channels, net_name, basic_layers_name,
                                            loss_function, weighted_loss, score_index,
                                            False)
         init = self.initialize()
@@ -188,7 +188,7 @@ class Launcher():
             loss_function = self.params.pop('loss_function', 'dice_loss')
             score_index = self.params.pop('score_index', 'Dice')
 
-            self.vnet = Segmentation_Model(img_tf=test_img_tf, label_tf=test_label_tf, num_class=n_class,
+            self.vnet = Unet2d(img_tf=test_img_tf, label_tf=test_label_tf, num_class=n_class,
                                            channels=img_channels, net_name=net_name,
                                            basic_layers_name=basic_layers_name, loss_function=loss_function,
                                            score_index=score_index, is_training=False)
